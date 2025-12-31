@@ -1,6 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
 
 interface Reaction {
     id: string;
@@ -26,20 +27,43 @@ interface CardModalProps {
     onToggleReact: (emoji: string, hasReacted: boolean) => void;
 }
 
+// User colors
+const USER_COLORS: Record<string, string> = {
+    '小瀚': 'ring-blue-400 bg-blue-50',
+    '巧巧': 'ring-pink-400 bg-pink-50',
+};
+
+// Default emojis
+const DEFAULT_EMOJIS = ['❤️', '🥹', '😆', '🤗', '🥺', '💪', '😮'];
+
+// Extended emoji picker options
+const EXTENDED_EMOJIS = ['🎉', '🔥', '👏', '💯', '🙌', '😍', '🤩', '💕', '🌟', '🎊', '💖', '😢', '😭', '🤔', '👀'];
+
 export default function CardModal({ entry, currentUser, onClose, onEdit, onDelete, onToggleReact }: CardModalProps) {
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
     const isMemory = entry.type === 'MEMORY';
     const isLocked = entry.lockedUntil && new Date(entry.lockedUntil) > new Date();
     const isOwner = entry.user.name === currentUser;
 
-    // Count reactions and check if current user reacted
-    const reactionCounts: Record<string, number> = {};
-    const myReactions: Set<string> = new Set();
+    // Find current user's reaction (only one allowed)
+    const myReaction = entry.reactions.find(r => r.user.name === currentUser)?.emoji || null;
+
+    // Group reactions by emoji with user info
+    const reactionsByEmoji: Record<string, string[]> = {};
     entry.reactions.forEach(r => {
-        reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
-        if (r.user.name === currentUser) {
-            myReactions.add(r.emoji);
+        if (!reactionsByEmoji[r.emoji]) {
+            reactionsByEmoji[r.emoji] = [];
         }
+        reactionsByEmoji[r.emoji].push(r.user.name);
     });
+
+    const handleEmojiClick = (emoji: string) => {
+        const hasReacted = myReaction === emoji;
+        // If clicking different emoji and already have one, this will toggle off old and add new
+        onToggleReact(emoji, hasReacted);
+        setShowEmojiPicker(false);
+    };
 
     return (
         <motion.div
@@ -65,7 +89,7 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
                         : 'bg-[#FFF9EA] text-stone-700 border-t-8 border-pink-300'
                     }`}
             >
-                {/* Close Button - Large hitbox */}
+                {/* Close Button */}
                 <button
                     onClick={onClose}
                     className="absolute top-2 right-2 w-12 h-12 flex items-center justify-center text-stone-400 hover:text-stone-600 hover:bg-stone-200/50 rounded-full text-2xl transition-all hover:scale-110"
@@ -103,33 +127,88 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
                 )}
 
                 {/* Reactions Bar */}
-                <div className="pt-4 border-t border-black/10 flex flex-wrap gap-2 items-center">
-                    {/* Existing Reactions */}
-                    {Object.entries(reactionCounts).map(([emoji, count]) => (
-                        <span key={emoji} className="text-sm bg-white/70 px-2 py-1 rounded-full border border-black/5 shadow-sm">
-                            {emoji} {count}
-                        </span>
-                    ))}
+                <div className="pt-4 border-t border-black/10">
+                    {/* Existing Reactions with user colors */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                        {Object.entries(reactionsByEmoji).map(([emoji, users]) => (
+                            <div key={emoji} className="flex items-center bg-white/70 px-2 py-1 rounded-full border border-black/5 shadow-sm">
+                                <span className="text-lg mr-1">{emoji}</span>
+                                <div className="flex -space-x-1">
+                                    {users.map(userName => (
+                                        <span
+                                            key={userName}
+                                            className={`w-5 h-5 rounded-full ring-2 flex items-center justify-center text-[10px] font-sans font-bold
+                                                ${USER_COLORS[userName] || 'ring-gray-300 bg-gray-100'}`}
+                                            title={userName}
+                                        >
+                                            {userName.charAt(0)}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
 
-                    {/* Toggle Reaction Buttons */}
+                    {/* Emoji Selector */}
                     {!isLocked && (
-                        <div className="flex space-x-1 ml-auto">
-                            {['❤️', '🤗', '😆', '🥹'].map(emoji => {
-                                const hasReacted = myReactions.has(emoji);
-                                return (
-                                    <button
-                                        key={emoji}
-                                        onClick={() => onToggleReact(emoji, hasReacted)}
-                                        className={`text-xl transition-all p-2 rounded-full
-                                            ${hasReacted
-                                                ? 'bg-pink-100 scale-110 ring-2 ring-pink-300'
-                                                : 'hover:scale-125 hover:bg-white/50'
-                                            }`}
+                        <div className="relative">
+                            <div className="flex flex-wrap gap-1 items-center">
+                                {DEFAULT_EMOJIS.map(emoji => {
+                                    const isSelected = myReaction === emoji;
+                                    return (
+                                        <button
+                                            key={emoji}
+                                            onClick={() => handleEmojiClick(emoji)}
+                                            className={`text-xl transition-all p-2 rounded-full
+                                                ${isSelected
+                                                    ? `scale-110 ring-2 ${USER_COLORS[currentUser] || 'ring-gray-300 bg-gray-100'}`
+                                                    : 'hover:scale-125 hover:bg-white/50'
+                                                }`}
+                                        >
+                                            {emoji}
+                                        </button>
+                                    );
+                                })}
+
+                                {/* + Button for more emojis */}
+                                <button
+                                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                    className="text-xl p-2 rounded-full hover:bg-white/50 transition-all hover:scale-110 text-stone-400"
+                                >
+                                    ＋
+                                </button>
+                            </div>
+
+                            {/* Extended Emoji Picker */}
+                            <AnimatePresence>
+                                {showEmojiPicker && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="absolute bottom-full mb-2 left-0 right-0 bg-white rounded-lg shadow-lg p-3 border border-stone-200"
                                     >
-                                        {emoji}
-                                    </button>
-                                );
-                            })}
+                                        <div className="flex flex-wrap gap-1">
+                                            {EXTENDED_EMOJIS.map(emoji => {
+                                                const isSelected = myReaction === emoji;
+                                                return (
+                                                    <button
+                                                        key={emoji}
+                                                        onClick={() => handleEmojiClick(emoji)}
+                                                        className={`text-xl p-2 rounded-full transition-all
+                                                            ${isSelected
+                                                                ? `scale-110 ring-2 ${USER_COLORS[currentUser] || 'ring-gray-300'}`
+                                                                : 'hover:scale-125 hover:bg-stone-100'
+                                                            }`}
+                                                    >
+                                                        {emoji}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     )}
                 </div>

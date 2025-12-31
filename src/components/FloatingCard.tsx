@@ -37,7 +37,7 @@ export default function FloatingCard({
     // Randomize initial position and duration
     const randomX = useMemo(() => Math.random() * 80 + 10, []);
     const duration = useMemo(() => Math.random() * 15 + 20, []); // 20-35s
-    const delay = useMemo(() => Math.random() * 2, []); // 0-2s quick start
+    const delay = useMemo(() => Math.random() * 0.5, []); // 0-0.5s instant start
     const rotate = useMemo(() => Math.random() * 6 - 3, []);
 
     const isMemory = type === 'MEMORY';

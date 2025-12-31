@@ -117,8 +117,13 @@ export default function Home() {
 
   const handleToggleReact = async (id: string, emoji: string, hasReacted: boolean) => {
     try {
+      // Find if user already has a different reaction on this entry
+      const entry = entries.find(e => e.id === id);
+      const existingReaction = entry?.reactions.find(r => r.user.name === currentUser);
+      const oldEmoji = existingReaction?.emoji;
+
       if (hasReacted) {
-        // Remove reaction - optimistic update
+        // Remove reaction - same emoji clicked again
         setEntries(prev => prev.map(e => {
           if (e.id === id) {
             return {
@@ -129,7 +134,6 @@ export default function Home() {
           return e;
         }));
 
-        // Also update expanded entry
         if (expandedEntry && expandedEntry.id === id) {
           setExpandedEntry(prev => prev ? {
             ...prev,
@@ -141,22 +145,47 @@ export default function Home() {
           method: 'DELETE'
         });
       } else {
-        // Add reaction - optimistic update
+        // If user has existing reaction with different emoji, remove it first
+        if (oldEmoji && oldEmoji !== emoji) {
+          // Remove old reaction (optimistic)
+          setEntries(prev => prev.map(e => {
+            if (e.id === id) {
+              return {
+                ...e,
+                reactions: e.reactions.filter(r => !(r.user.name === currentUser))
+              };
+            }
+            return e;
+          }));
+
+          if (expandedEntry && expandedEntry.id === id) {
+            setExpandedEntry(prev => prev ? {
+              ...prev,
+              reactions: prev.reactions.filter(r => !(r.user.name === currentUser))
+            } : null);
+          }
+
+          // Delete old reaction from server
+          await fetch(`/api/reactions?entryId=${id}&userName=${encodeURIComponent(currentUser!)}&emoji=${encodeURIComponent(oldEmoji)}`, {
+            method: 'DELETE'
+          });
+        }
+
+        // Add new reaction - optimistic update
         setEntries(prev => prev.map(e => {
           if (e.id === id) {
             return {
               ...e,
-              reactions: [...e.reactions, { id: 'temp-' + Date.now(), emoji, user: { name: currentUser! } }]
+              reactions: [...e.reactions.filter(r => r.user.name !== currentUser), { id: 'temp-' + Date.now(), emoji, user: { name: currentUser! } }]
             };
           }
           return e;
         }));
 
-        // Also update expanded entry
         if (expandedEntry && expandedEntry.id === id) {
           setExpandedEntry(prev => prev ? {
             ...prev,
-            reactions: [...prev.reactions, { id: 'temp-' + Date.now(), emoji, user: { name: currentUser! } }]
+            reactions: [...prev.reactions.filter(r => r.user.name !== currentUser), { id: 'temp-' + Date.now(), emoji, user: { name: currentUser! } }]
           } : null);
         }
 
