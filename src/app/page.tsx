@@ -33,6 +33,19 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const [expandedEntry, setExpandedEntry] = useState<Entry | null>(null);
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
+
+  const handleTogglePin = (id: string) => {
+    setPinnedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   // Fetch entries when user is selected
   useEffect(() => {
@@ -306,62 +319,95 @@ export default function Home() {
         </button>
       </header>
 
-      {/* Floating Cards Area */}
-      <div className="relative w-full h-screen overflow-hidden pointer-events-none">
-        {entries.map((entry, index) => (
-          <FloatingCard
-            key={entry.id}
-            id={entry.id}
-            type={entry.type}
-            content={entry.content}
-            author={entry.user.name}
-            year={entry.year}
-            imageUrl={entry.imageUrl}
-            lockedUntil={entry.lockedUntil}
-            reactions={entry.reactions}
-            comments={entry.comments}
-            index={index}
-            onClick={() => handleCardClick(entry)}
-          />
-        ))}
-      </div>
-
-      {/* Card Detail Modal - Rendered at page level! */}
-      <AnimatePresence>
-        {expandedEntry && (
-          <CardModal
-            entry={expandedEntry}
-            currentUser={currentUser}
-            onClose={() => setExpandedEntry(null)}
-            onEdit={() => handleEdit(expandedEntry.id)}
-            onDelete={() => handleDelete(expandedEntry.id)}
-            onToggleReact={(emoji, hasReacted) => handleToggleReact(expandedEntry.id, emoji, hasReacted)}
-            onAddComment={(content) => handleAddComment(expandedEntry.id, content)}
-            onDeleteComment={(commentId) => handleDeleteComment(commentId)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Entry Form Modal */}
-      <AnimatePresence>
-        {showForm && (
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <EntryForm
-              user={currentUser}
-              initialData={editingEntry}
-              onAdd={handleSubmitEntry}
-              onCancel={() => { setShowForm(false); setEditingEntry(null); }}
-            />
+      {/* Main Content Area with Pinned Sidebar */}
+      <div className="flex h-screen pt-20">
+        {/* Pinned Sidebar */}
+        {pinnedIds.size > 0 && (
+          <div className="w-60 flex-shrink-0 p-4 overflow-y-auto pointer-events-auto bg-stone-100/50 backdrop-blur-sm border-r border-stone-200/50">
+            <h2 className="text-xs font-sans font-bold uppercase tracking-widest text-stone-400 mb-3">📌 Pinned</h2>
+            <div className="space-y-3">
+              {entries.filter(e => pinnedIds.has(e.id)).map(entry => {
+                const isMemory = entry.type === 'MEMORY';
+                return (
+                  <div
+                    key={entry.id}
+                    onClick={() => handleCardClick(entry)}
+                    className={`p-2.5 rounded-lg shadow-sm cursor-pointer font-hand text-sm transition-all hover:shadow-md
+                      ${isMemory ? 'bg-blue-50 border-l-4 border-blue-400' : 'bg-[#FFF9EA] border-l-4 border-pink-400'}`}
+                  >
+                    <p className="line-clamp-2 text-stone-700">{entry.content}</p>
+                    {entry.reactions.length > 0 && (
+                      <div className="mt-1 text-[10px]">
+                        {entry.reactions.slice(0, 2).map(r => r.emoji).join(' ')}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
-      </AnimatePresence>
 
-      {/* Empty State Hint - only show after loading complete */}
-      {!isLoading && entries.length === 0 && !showForm && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <p className="text-stone-300 text-2xl font-hand rotate-[-5deg]">It&apos;s quiet here... Add a memory or wish.</p>
+        {/* Floating Cards Area */}
+        <div className="relative flex-1 h-full overflow-hidden pointer-events-none">
+          {entries.map((entry, index) => (
+            <FloatingCard
+              key={entry.id}
+              id={entry.id}
+              type={entry.type}
+              content={entry.content}
+              author={entry.user.name}
+              currentUser={currentUser}
+              year={entry.year}
+              imageUrl={entry.imageUrl}
+              lockedUntil={entry.lockedUntil}
+              reactions={entry.reactions}
+              comments={entry.comments}
+              index={index}
+              onClick={() => handleCardClick(entry)}
+            />
+          ))}
         </div>
-      )}
+
+        {/* Card Detail Modal - Rendered at page level! */}
+        <AnimatePresence>
+          {expandedEntry && (
+            <CardModal
+              entry={expandedEntry}
+              currentUser={currentUser}
+              isPinned={pinnedIds.has(expandedEntry.id)}
+              onClose={() => setExpandedEntry(null)}
+              onEdit={() => handleEdit(expandedEntry.id)}
+              onDelete={() => handleDelete(expandedEntry.id)}
+              onToggleReact={(emoji, hasReacted) => handleToggleReact(expandedEntry.id, emoji, hasReacted)}
+              onAddComment={(content) => handleAddComment(expandedEntry.id, content)}
+              onDeleteComment={(commentId) => handleDeleteComment(commentId)}
+              onTogglePin={() => handleTogglePin(expandedEntry.id)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Entry Form Modal */}
+        <AnimatePresence>
+          {showForm && (
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <EntryForm
+                user={currentUser}
+                initialData={editingEntry}
+                onAdd={handleSubmitEntry}
+                onCancel={() => { setShowForm(false); setEditingEntry(null); }}
+              />
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Empty State Hint - only show after loading complete */}
+        {!isLoading && entries.length === 0 && !showForm && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <p className="text-stone-300 text-2xl font-hand rotate-[-5deg]">It&apos;s quiet here... Add a memory or wish.</p>
+          </div>
+        )}
+      </div>
     </main>
   );
 }

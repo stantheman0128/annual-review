@@ -20,6 +20,7 @@ interface FloatingCardProps {
     type: 'MEMORY' | 'WISH';
     content: string;
     author: string;
+    currentUser: string;
     index: number;
     year: number;
     imageUrl?: string;
@@ -53,6 +54,7 @@ export default function FloatingCard({
     type,
     content,
     author,
+    currentUser,
     index,
     year,
     imageUrl,
@@ -61,21 +63,24 @@ export default function FloatingCard({
     comments = [],
     onClick,
 }: FloatingCardProps) {
-    const randomX = useMemo(() => Math.random() * 80 + 10, []);
-    const duration = useMemo(() => Math.random() * 20 + 30, []); // 30-50s slower drift
-    const delay = useMemo(() => Math.random() * 0.5, []);
+    // Use index to create more spread-out positions (sector-based distribution)
+    const sectorCount = 5; // Divide screen into 5 horizontal sectors
+    const sector = index % sectorCount;
+    const baseX = (sector * 18) + 5; // 5%, 23%, 41%, 59%, 77%
+    const randomOffset = useMemo(() => Math.random() * 12 - 6, []); // ±6% variance
+    const randomX = baseX + randomOffset;
+
+    const duration = useMemo(() => Math.random() * 20 + 35, []); // 35-55s even slower
+    const delay = useMemo(() => (index % 3) * 0.3 + Math.random() * 0.5, []); // Staggered start
     const rotate = useMemo(() => Math.random() * 6 - 3, []);
 
     const isMemory = type === 'MEMORY';
     const isLocked = lockedUntil && new Date(lockedUntil) > new Date();
     const theme = getUserTheme(author);
+    const isOtherUser = author !== currentUser;
 
-    // Memory: user theme background + dark border
-    // Wish: pale yellow background + user theme dark border
     const cardBg = isMemory ? theme.bg : 'bg-[#FFF9EA]';
     const cardBorder = theme.border;
-
-    // First comment preview (truncated)
     const firstComment = comments.length > 0 ? comments[0] : null;
 
     return (
@@ -99,11 +104,18 @@ export default function FloatingCard({
             onClick={onClick}
             className={`absolute w-52 p-2.5 rounded-sm shadow-md pointer-events-auto cursor-pointer font-hand tracking-wider
                 ${cardBg} text-stone-700 border-t-4 ${cardBorder}
-                transition-transform duration-300 hover:scale-105`}
+                transition-transform duration-300 hover:scale-105 hover:shadow-lg`}
         >
-            {/* Header: Year only */}
-            <div className="text-[9px] font-sans font-bold uppercase tracking-widest opacity-40 mb-1.5">
-                {year} {isMemory ? 'Memory' : 'Wish'}
+            {/* Header: Year + Author name (only show if other user's card) */}
+            <div className="flex items-center justify-between mb-1.5">
+                <div className="text-[9px] font-sans font-bold uppercase tracking-widest opacity-40">
+                    {year} {isMemory ? 'Memory' : 'Wish'}
+                </div>
+                {isOtherUser && (
+                    <div className="text-[10px] font-sans text-stone-500">
+                        {author}
+                    </div>
+                )}
             </div>
 
             {/* Content Preview */}
