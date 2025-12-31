@@ -189,10 +189,10 @@ export default function EntryForm({ user, initialData, onAdd, onCancel }: EntryF
                     <button
                         type="submit"
                         disabled={isSubmitting || !content.trim()}
-                        className={`flex-1 py-3 rounded-full font-bold tracking-wide transition-all shadow-md flex items-center justify-center space-x-2
-                           ${isSubmitting
-                                ? 'bg-stone-400 cursor-not-allowed'
-                                : 'bg-[#E6B8B8] text-white hover:bg-[#DFA5A5] transform hover:-translate-y-0.5'
+                        className={`flex-1 py-3 rounded-full font-bold tracking-wide transition-all flex items-center justify-center space-x-2
+                           ${isSubmitting || !content.trim()
+                                ? 'bg-stone-300 text-stone-400 cursor-not-allowed shadow-sm'
+                                : 'bg-[#E07070] text-white hover:bg-[#D05050] transform hover:-translate-y-0.5 shadow-lg'
                             }`}
                     >
                         {isSubmitting ? (
