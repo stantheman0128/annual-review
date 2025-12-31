@@ -14,13 +14,14 @@ interface Entry {
   year: number;
   imageUrl?: string;
   lockedUntil?: string;
-  reactions?: any[];
+  reactions: any[];
 }
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
 
   // Fetch entries when user is selected
   useEffect(() => {
@@ -42,9 +43,9 @@ export default function Home() {
     }
   };
 
-  const handleAddEntry = async (entryData: any) => {
+  const handleSubmitEntry = async (entryData: any) => {
     try {
-      // Convert 'user' to 'userName' for new API
+      // payload preparation
       const payload = {
         userName: entryData.user,
         type: entryData.type,
@@ -54,26 +55,77 @@ export default function Home() {
         lockedUntil: entryData.lockedUntil || null,
       };
 
-      const res = await fetch('/api/entries', {
-        method: 'POST',
+      let url = '/api/entries';
+      let method = 'POST';
+
+      if (editingEntry) {
+        url = `/api/entries/${editingEntry.id}`;
+        method = 'PUT';
+      }
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
       const data = await res.json();
       if (data.success) {
-        setEntries((prev) => [data.data, ...prev]);
+        // Refresh list
+        await fetchEntries();
         setShowForm(false);
+        setEditingEntry(null);
       } else {
         throw new Error(data.error || 'Failed to save data');
       }
     } catch (error) {
-      console.error('Failed to add entry', error);
+      console.error('Failed to save entry', error);
       throw error;
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    const entry = entries.find(e => e.id === id);
+    if (entry) {
+      setEditingEntry(entry);
+      setShowForm(true);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this memory?')) return;
+    try {
+      await fetch(`/api/entries/${id}`, { method: 'DELETE' });
+      setEntries(prev => prev.filter(e => e.id !== id));
+    } catch (error) {
+      console.error('Delete failed', error);
+    }
+  };
+
+  const handleReact = async (id: string, emoji: string) => {
+    try {
+      // Optimistic update
+      setEntries(prev => prev.map(e => {
+        if (e.id === id) {
+          return {
+            ...e,
+            reactions: [...e.reactions, { id: 'temp-' + Date.now(), emoji, user: { name: currentUser! } }]
+          };
+        }
+        return e;
+      }));
+
+      await fetch('/api/reactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entryId: id, userName: currentUser, emoji })
+      });
+      // Re-fetch to get real ID and correct count
+      fetchEntries();
+    } catch (error) {
+      console.error('React failed', error);
     }
   };
 
@@ -87,12 +139,12 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#FEF9E7] overflow-hidden relative font-sans text-stone-700">
-      {/* Background Texture (optional CSS pattern) */}
+      {/* Background Texture */}
       <div className="absolute inset-0 opacity-40 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pointer-events-none" />
 
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 p-8 flex justify-between items-center z-50">
-        <div className="flex items-center space-x-4">
+      <header className="fixed top-0 left-0 right-0 p-8 flex justify-between items-center z-50 pointer-events-none">
+        <div className="flex items-center space-x-4 pointer-events-auto">
           <button
             onClick={() => setCurrentUser(null)}
             className="text-stone-400 hover:text-stone-600 transition-colors font-hand text-xl"
@@ -100,12 +152,12 @@ export default function Home() {
             ← Back
           </button>
           <h1 className="text-3xl font-hand font-bold text-stone-700">
-            {currentUser}'s 2025 & 2026
+            {currentUser}&apos;s 2025 & 2026
           </h1>
         </div>
         <button
-          onClick={() => setShowForm(true)}
-          className="px-8 py-3 rounded-full bg-stone-800 text-[#FEF9E7] hover:bg-stone-700 transition-all font-bold tracking-wide shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          onClick={() => { setEditingEntry(null); setShowForm(true); }}
+          className="pointer-events-auto px-8 py-3 rounded-full bg-stone-800 text-[#FEF9E7] hover:bg-stone-700 transition-all font-bold tracking-wide shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
         >
           + Add Note
         </button>
@@ -116,9 +168,18 @@ export default function Home() {
         {entries.map((entry, index) => (
           <FloatingCard
             key={entry.id}
+            id={entry.id}
             type={entry.type}
             content={entry.content}
+            year={entry.year}
+            imageUrl={entry.imageUrl}
+            lockedUntil={entry.lockedUntil}
+            reactions={entry.reactions}
+            currentUser={currentUser}
             index={index}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onReact={handleReact}
           />
         ))}
       </div>
@@ -129,8 +190,9 @@ export default function Home() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <EntryForm
               user={currentUser}
-              onAdd={handleAddEntry}
-              onCancel={() => setShowForm(false)}
+              initialData={editingEntry}
+              onAdd={handleSubmitEntry}
+              onCancel={() => { setShowForm(false); setEditingEntry(null); }}
             />
           </div>
         )}
@@ -139,7 +201,7 @@ export default function Home() {
       {/* Empty State Hint */}
       {entries.length === 0 && !showForm && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <p className="text-stone-300 text-2xl font-hand rotate-[-5deg]">It's quiet here... Add a memory or wish.</p>
+          <p className="text-stone-300 text-2xl font-hand rotate-[-5deg]">It&apos;s quiet here... Add a memory or wish.</p>
         </div>
       )}
     </main>

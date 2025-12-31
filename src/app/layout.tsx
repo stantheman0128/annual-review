@@ -16,8 +16,16 @@ const geistMono = Geist_Mono({
 const zhiMangXing = Zhi_Mang_Xing({
   weight: "400",
   variable: "--font-zhi-mang-xing",
-  subsets: ["latin"], // Note: Chinese subsets might need preload: false if not supported by next/font directly or just use latin + manual
-  preload: false, // Chinese fonts are large
+  subsets: ["latin"],
+  preload: false,
+});
+
+import { Noto_Sans_TC } from "next/font/google";
+
+const notoSansTC = Noto_Sans_TC({
+  variable: "--font-noto-sans-tc",
+  subsets: ["latin"],
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -33,7 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${zhiMangXing.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${zhiMangXing.variable} ${notoSansTC.variable} antialiased`}
       >
         <Providers>
           {children}
