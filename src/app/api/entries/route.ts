@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 
-// GET: 取得所有卡片
+// GET: 取得所有卡片 (雙方都能看到彼此的)
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
-    const userName = searchParams.get('user');
     const type = searchParams.get('type');
 
     try {
         const entries = await prisma.entry.findMany({
             where: {
-                ...(userName && { user: { name: userName } }),
                 ...(type && { type }),
             },
             include: {

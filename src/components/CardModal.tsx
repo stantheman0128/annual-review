@@ -37,10 +37,25 @@ interface CardModalProps {
     onDeleteComment: (commentId: string) => void;
 }
 
-// User colors
+// User colors - with dynamic fallback
 const USER_COLORS: Record<string, string> = {
     '小瀚': 'ring-blue-400 bg-blue-50',
     '巧巧': 'ring-pink-400 bg-pink-50',
+};
+
+// Fallback colors for other users
+const FALLBACK_COLORS = [
+    'ring-purple-400 bg-purple-50',
+    'ring-green-400 bg-green-50',
+    'ring-orange-400 bg-orange-50',
+    'ring-cyan-400 bg-cyan-50',
+];
+
+const getUserColor = (userName: string): string => {
+    if (USER_COLORS[userName]) return USER_COLORS[userName];
+    // Generate consistent color based on username hash
+    const hash = userName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
 };
 
 // Default emojis
@@ -154,7 +169,7 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
                                         <span
                                             key={userName}
                                             className={`w-5 h-5 rounded-full ring-2 flex items-center justify-center text-[10px] font-sans font-bold
-                                                ${USER_COLORS[userName] || 'ring-gray-300 bg-gray-100'}`}
+                                                ${getUserColor(userName)}`}
                                             title={userName}
                                         >
                                             {userName.charAt(0)}
@@ -177,7 +192,7 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
                                             onClick={() => handleEmojiClick(emoji)}
                                             className={`text-xl transition-all p-2 rounded-full
                                                 ${isSelected
-                                                    ? `scale-110 ring-2 ${USER_COLORS[currentUser] || 'ring-gray-300 bg-gray-100'}`
+                                                    ? `scale-110 ring-2 ${getUserColor(currentUser)}`
                                                     : 'hover:scale-125 hover:bg-white/50'
                                                 }`}
                                         >
@@ -213,7 +228,7 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
                                                         onClick={() => handleEmojiClick(emoji)}
                                                         className={`text-xl p-2 rounded-full transition-all
                                                             ${isSelected
-                                                                ? `scale-110 ring-2 ${USER_COLORS[currentUser] || 'ring-gray-300'}`
+                                                                ? `scale-110 ring-2 ${getUserColor(currentUser)}`
                                                                 : 'hover:scale-125 hover:bg-stone-100'
                                                             }`}
                                                     >
@@ -244,7 +259,7 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
                                 <div key={comment.id} className="group flex items-start space-x-2">
                                     <div
                                         className={`w-6 h-6 rounded-full ring-2 flex-shrink-0 flex items-center justify-center text-[10px] font-sans font-bold mt-1
-                                        ${USER_COLORS[comment.user.name] || 'ring-gray-300 bg-gray-100'}`}
+                                        ${getUserColor(comment.user.name)}`}
                                         title={comment.user.name}
                                     >
                                         {comment.user.name.charAt(0)}

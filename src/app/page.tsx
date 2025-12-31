@@ -44,7 +44,7 @@ export default function Home() {
   const fetchEntries = async () => {
     if (!currentUser) return;
     try {
-      const res = await fetch(`/api/entries?user=${encodeURIComponent(currentUser)}`);
+      const res = await fetch('/api/entries');
       const data = await res.json();
       if (data.success) {
         setEntries(data.data);
