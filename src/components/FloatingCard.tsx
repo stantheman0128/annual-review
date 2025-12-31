@@ -9,6 +9,12 @@ interface Reaction {
     user: { name: string };
 }
 
+interface Comment {
+    id: string;
+    content: string;
+    user: { name: string };
+}
+
 interface FloatingCardProps {
     id: string;
     type: 'MEMORY' | 'WISH';
@@ -19,8 +25,28 @@ interface FloatingCardProps {
     imageUrl?: string;
     lockedUntil?: string;
     reactions?: Reaction[];
+    comments?: Comment[];
     onClick: () => void;
 }
+
+// User theme colors
+const USER_THEMES: Record<string, { bg: string; border: string }> = {
+    '小瀚': { bg: 'bg-blue-50', border: 'border-blue-400' },
+    '巧巧': { bg: 'bg-pink-50', border: 'border-pink-400' },
+};
+
+const FALLBACK_THEMES = [
+    { bg: 'bg-purple-50', border: 'border-purple-400' },
+    { bg: 'bg-green-50', border: 'border-green-400' },
+    { bg: 'bg-orange-50', border: 'border-orange-400' },
+    { bg: 'bg-cyan-50', border: 'border-cyan-400' },
+];
+
+const getUserTheme = (userName: string) => {
+    if (USER_THEMES[userName]) return USER_THEMES[userName];
+    const hash = userName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return FALLBACK_THEMES[hash % FALLBACK_THEMES.length];
+};
 
 export default function FloatingCard({
     id,
@@ -32,16 +58,25 @@ export default function FloatingCard({
     imageUrl,
     lockedUntil,
     reactions = [],
+    comments = [],
     onClick,
 }: FloatingCardProps) {
-    // Randomize initial position and duration
     const randomX = useMemo(() => Math.random() * 80 + 10, []);
     const duration = useMemo(() => Math.random() * 20 + 30, []); // 30-50s slower drift
-    const delay = useMemo(() => Math.random() * 0.5, []); // 0-0.5s instant start
+    const delay = useMemo(() => Math.random() * 0.5, []);
     const rotate = useMemo(() => Math.random() * 6 - 3, []);
 
     const isMemory = type === 'MEMORY';
     const isLocked = lockedUntil && new Date(lockedUntil) > new Date();
+    const theme = getUserTheme(author);
+
+    // Memory: user theme background + dark border
+    // Wish: pale yellow background + user theme dark border
+    const cardBg = isMemory ? theme.bg : 'bg-[#FFF9EA]';
+    const cardBorder = theme.border;
+
+    // First comment preview (truncated)
+    const firstComment = comments.length > 0 ? comments[0] : null;
 
     return (
         <motion.div
@@ -62,43 +97,57 @@ export default function FloatingCard({
                 delay: delay
             }}
             onClick={onClick}
-            className={`absolute w-56 p-3 rounded-sm shadow-md pointer-events-auto cursor-pointer font-hand tracking-wider
-                ${isMemory
-                    ? 'bg-[#F0F4F8] text-slate-700 border-t-4 border-blue-200/50'
-                    : 'bg-[#FFF9EA] text-stone-700 border-t-4 border-pink-200/50'
-                } transition-transform duration-300 hover:scale-105`}
+            className={`absolute w-52 p-2.5 rounded-sm shadow-md pointer-events-auto cursor-pointer font-hand tracking-wider
+                ${cardBg} text-stone-700 border-t-4 ${cardBorder}
+                transition-transform duration-300 hover:scale-105`}
         >
-            {/* Header: Year + Author */}
-            <div className="flex items-center justify-between mb-2">
-                <div className="text-[10px] font-sans font-bold uppercase tracking-widest opacity-40">
-                    {year} {isMemory ? 'Memory' : 'Wish'}
-                </div>
-                <div className="text-[10px] font-sans text-stone-400">
-                    {author}
-                </div>
+            {/* Header: Year only */}
+            <div className="text-[9px] font-sans font-bold uppercase tracking-widest opacity-40 mb-1.5">
+                {year} {isMemory ? 'Memory' : 'Wish'}
             </div>
 
             {/* Content Preview */}
             {isLocked ? (
-                <div className="flex items-center justify-center py-4 opacity-60">
-                    <span className="text-2xl">🔒</span>
+                <div className="flex items-center justify-center py-3 opacity-60">
+                    <span className="text-xl">🔒</span>
                 </div>
             ) : (
                 <>
                     {imageUrl && (
-                        <div className="mb-2 w-full h-20 overflow-hidden rounded opacity-80">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <div className="mb-1.5 w-full h-16 overflow-hidden rounded opacity-80">
                             <img src={imageUrl} alt="" className="w-full h-full object-cover" />
                         </div>
                     )}
-                    <p className="text-base leading-relaxed line-clamp-3">{content}</p>
+                    <p className="text-sm leading-relaxed line-clamp-3">{content}</p>
                 </>
             )}
 
-            {/* Reaction Count Badge */}
+            {/* Reactions - compact emoji badges */}
             {reactions.length > 0 && (
-                <div className="mt-2 text-xs opacity-50">
-                    {reactions.length} ❤️
+                <div className="mt-1.5 flex flex-wrap gap-0.5">
+                    {reactions.slice(0, 3).map(r => {
+                        const rTheme = getUserTheme(r.user.name);
+                        return (
+                            <span
+                                key={r.id}
+                                className={`text-[11px] px-1 rounded ${rTheme.bg}`}
+                            >
+                                {r.emoji}
+                            </span>
+                        );
+                    })}
+                    {reactions.length > 3 && (
+                        <span className="text-[10px] text-stone-400">+{reactions.length - 3}</span>
+                    )}
+                </div>
+            )}
+
+            {/* First Comment Preview */}
+            {firstComment && !isLocked && (
+                <div className="mt-1.5 pt-1.5 border-t border-stone-200/50">
+                    <p className="text-[10px] text-stone-500 line-clamp-1">
+                        💬 {firstComment.content}
+                    </p>
                 </div>
             )}
         </motion.div>

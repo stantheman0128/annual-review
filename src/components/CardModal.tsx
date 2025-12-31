@@ -37,31 +37,27 @@ interface CardModalProps {
     onDeleteComment: (commentId: string) => void;
 }
 
-// User colors - with dynamic fallback
-const USER_COLORS: Record<string, string> = {
-    '小瀚': 'ring-blue-400 bg-blue-50',
-    '巧巧': 'ring-pink-400 bg-pink-50',
+// User theme colors - background, border (dark), ring
+const USER_THEMES: Record<string, { bg: string; border: string; ring: string; commentBg: string }> = {
+    '小瀚': { bg: 'bg-blue-50', border: 'border-blue-400', ring: 'ring-blue-400', commentBg: 'bg-blue-100/50' },
+    '巧巧': { bg: 'bg-pink-50', border: 'border-pink-400', ring: 'ring-pink-400', commentBg: 'bg-pink-100/50' },
 };
 
-// Fallback colors for other users
-const FALLBACK_COLORS = [
-    'ring-purple-400 bg-purple-50',
-    'ring-green-400 bg-green-50',
-    'ring-orange-400 bg-orange-50',
-    'ring-cyan-400 bg-cyan-50',
+const FALLBACK_THEMES = [
+    { bg: 'bg-purple-50', border: 'border-purple-400', ring: 'ring-purple-400', commentBg: 'bg-purple-100/50' },
+    { bg: 'bg-green-50', border: 'border-green-400', ring: 'ring-green-400', commentBg: 'bg-green-100/50' },
+    { bg: 'bg-orange-50', border: 'border-orange-400', ring: 'ring-orange-400', commentBg: 'bg-orange-100/50' },
+    { bg: 'bg-cyan-50', border: 'border-cyan-400', ring: 'ring-cyan-400', commentBg: 'bg-cyan-100/50' },
 ];
 
-const getUserColor = (userName: string): string => {
-    if (USER_COLORS[userName]) return USER_COLORS[userName];
-    // Generate consistent color based on username hash
+const getUserTheme = (userName: string) => {
+    if (USER_THEMES[userName]) return USER_THEMES[userName];
     const hash = userName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
+    return FALLBACK_THEMES[hash % FALLBACK_THEMES.length];
 };
 
-// Default emojis
+// Default emojis (reduced set for smaller display)
 const DEFAULT_EMOJIS = ['❤️', '🥹', '😆', '🤗', '🥺', '💪', '😮'];
-
-// Extended emoji picker options
 const EXTENDED_EMOJIS = ['🎉', '🔥', '👏', '💯', '🙌', '😍', '🤩', '💕', '🌟', '🎊', '💖', '😢', '😭', '🤔', '👀'];
 
 export default function CardModal({ entry, currentUser, onClose, onEdit, onDelete, onToggleReact, onAddComment, onDeleteComment }: CardModalProps) {
@@ -72,17 +68,9 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
     const isLocked = entry.lockedUntil && new Date(entry.lockedUntil) > new Date();
     const isOwner = entry.user.name === currentUser;
 
-    // Find current user's reaction (only one allowed)
+    const authorTheme = getUserTheme(entry.user.name);
+    const currentUserTheme = getUserTheme(currentUser);
     const myReaction = entry.reactions.find(r => r.user.name === currentUser)?.emoji || null;
-
-    // Group reactions by emoji with user info
-    const reactionsByEmoji: Record<string, string[]> = {};
-    entry.reactions.forEach(r => {
-        if (!reactionsByEmoji[r.emoji]) {
-            reactionsByEmoji[r.emoji] = [];
-        }
-        reactionsByEmoji[r.emoji].push(r.user.name);
-    });
 
     const handleEmojiClick = (emoji: string) => {
         const hasReacted = myReaction === emoji;
@@ -96,6 +84,10 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
         setCommentText('');
     };
 
+    // Background: Memory uses author's theme, Wish uses pale yellow
+    const modalBg = isMemory ? authorTheme.bg : 'bg-[#FFF9EA]';
+    const borderColor = authorTheme.border;
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -104,132 +96,94 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
             className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
             onClick={onClose}
         >
-            {/* Backdrop */}
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-            {/* Modal Content */}
             <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}
-                className={`relative w-full max-w-md p-6 rounded-lg shadow-2xl font-hand tracking-wider
-                    ${isMemory
-                        ? 'bg-[#F0F4F8] text-slate-700 border-t-8 border-blue-300'
-                        : 'bg-[#FFF9EA] text-stone-700 border-t-8 border-pink-300'
-                    }`}
+                className={`relative w-full max-w-md p-5 rounded-lg shadow-2xl font-hand tracking-wider ${modalBg} text-stone-700 border-t-8 ${borderColor}`}
             >
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-2 right-2 w-12 h-12 flex items-center justify-center text-stone-400 hover:text-stone-600 hover:bg-stone-200/50 rounded-full text-2xl transition-all hover:scale-110"
+                    className="absolute top-1 right-1 w-10 h-10 flex items-center justify-center text-stone-400 hover:text-stone-600 hover:bg-stone-200/50 rounded-full text-xl transition-all"
                 >
                     ✕
                 </button>
 
-                {/* Header: Year + Author */}
-                <div className="flex items-center justify-between mb-4">
-                    <div className="text-xs font-sans font-bold uppercase tracking-widest opacity-50">
-                        {entry.year} {isMemory ? 'Memory' : 'Wish'}
-                    </div>
-                    <div className="text-sm font-sans text-stone-500">
-                        by <span className="font-medium text-stone-600">{entry.user.name}</span>
-                    </div>
+                {/* Header: Year only (no author redundancy) */}
+                <div className="text-xs font-sans font-bold uppercase tracking-widest opacity-50 mb-3">
+                    {entry.year} {isMemory ? 'Memory' : 'Wish'}
                 </div>
 
                 {/* Content */}
                 {isLocked ? (
-                    <div className="flex flex-col items-center justify-center py-12 opacity-60">
-                        <span className="text-5xl mb-3">🔒</span>
-                        <p className="text-lg font-sans">Locked until New Year</p>
+                    <div className="flex flex-col items-center justify-center py-10 opacity-60">
+                        <span className="text-4xl mb-2">🔒</span>
+                        <p className="text-sm font-sans">Locked until New Year</p>
                     </div>
                 ) : (
                     <>
-                        {/* Photo */}
                         {entry.imageUrl && (
-                            <div className="mb-4 p-2 bg-white shadow-md rotate-1 inline-block">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={entry.imageUrl} alt="Memory" className="max-w-full max-h-64 object-contain" />
+                            <div className="mb-3 p-1.5 bg-white shadow-md rotate-1 inline-block">
+                                <img src={entry.imageUrl} alt="Memory" className="max-w-full max-h-56 object-contain" />
                             </div>
                         )}
-                        <p className="text-2xl leading-relaxed whitespace-pre-wrap mb-4">{entry.content}</p>
+                        <p className="text-xl leading-relaxed whitespace-pre-wrap mb-4">{entry.content}</p>
                     </>
                 )}
 
-                {/* Reactions Bar */}
-                <div className="pt-4 border-t border-black/10">
-                    {/* Existing Reactions with user colors */}
-                    <div className="flex flex-wrap gap-2 mb-4">
-                        {Object.entries(reactionsByEmoji).map(([emoji, users]) => (
-                            <div key={emoji} className="flex items-center bg-white/70 px-2 py-1 rounded-full border border-black/5 shadow-sm">
-                                <span className="text-lg mr-1">{emoji}</span>
-                                <div className="flex -space-x-1">
-                                    {users.map(userName => (
-                                        <span
-                                            key={userName}
-                                            className={`w-5 h-5 rounded-full ring-2 flex items-center justify-center text-[10px] font-sans font-bold
-                                                ${getUserColor(userName)}`}
-                                            title={userName}
-                                        >
-                                            {userName.charAt(0)}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Emoji Selector */}
-                    {!isLocked && (
+                {/* Emoji Reactions - Compact */}
+                {!isLocked && (
+                    <div className="pt-3 border-t border-black/10">
                         <div className="relative">
-                            <div className="flex flex-wrap gap-1 items-center">
+                            <div className="flex flex-wrap gap-0.5 items-center">
                                 {DEFAULT_EMOJIS.map(emoji => {
                                     const isSelected = myReaction === emoji;
                                     return (
                                         <button
                                             key={emoji}
                                             onClick={() => handleEmojiClick(emoji)}
-                                            className={`text-xl transition-all p-2 rounded-full
+                                            className={`text-base p-1.5 rounded-full transition-all
                                                 ${isSelected
-                                                    ? `scale-110 ring-2 ${getUserColor(currentUser)}`
-                                                    : 'hover:scale-125 hover:bg-white/50'
+                                                    ? `scale-110 ring-2 ${currentUserTheme.ring} ${currentUserTheme.bg}`
+                                                    : 'hover:scale-110 hover:bg-white/50'
                                                 }`}
                                         >
                                             {emoji}
                                         </button>
                                     );
                                 })}
-
-                                {/* + Button for more emojis */}
                                 <button
                                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                    className="text-xl p-2 rounded-full hover:bg-white/50 transition-all hover:scale-110 text-stone-400"
+                                    className="text-sm p-1.5 rounded-full hover:bg-white/50 transition-all text-stone-400"
                                 >
                                     ＋
                                 </button>
                             </div>
 
-                            {/* Extended Emoji Picker */}
                             <AnimatePresence>
                                 {showEmojiPicker && (
                                     <motion.div
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: -10 }}
-                                        className="absolute bottom-full mb-2 left-0 right-0 bg-white rounded-lg shadow-lg p-3 border border-stone-200"
+                                        className="absolute bottom-full mb-2 left-0 right-0 bg-white rounded-lg shadow-lg p-2 border border-stone-200"
                                     >
-                                        <div className="flex flex-wrap gap-1">
+                                        <div className="flex flex-wrap gap-0.5">
                                             {EXTENDED_EMOJIS.map(emoji => {
                                                 const isSelected = myReaction === emoji;
                                                 return (
                                                     <button
                                                         key={emoji}
                                                         onClick={() => handleEmojiClick(emoji)}
-                                                        className={`text-xl p-2 rounded-full transition-all
+                                                        className={`text-base p-1.5 rounded-full transition-all
                                                             ${isSelected
-                                                                ? `scale-110 ring-2 ${getUserColor(currentUser)}`
-                                                                : 'hover:scale-125 hover:bg-stone-100'
+                                                                ? `scale-110 ring-2 ${currentUserTheme.ring}`
+                                                                : 'hover:scale-110 hover:bg-stone-100'
                                                             }`}
                                                     >
                                                         {emoji}
@@ -241,51 +195,48 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
                                 )}
                             </AnimatePresence>
                         </div>
-                    )}
-                </div>
 
-                {/* Comments Section */}
+                        {/* Show existing reactions as colored badges */}
+                        {entry.reactions.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                                {entry.reactions.map(r => {
+                                    const rTheme = getUserTheme(r.user.name);
+                                    return (
+                                        <span
+                                            key={r.id}
+                                            className={`text-sm px-1.5 py-0.5 rounded-full ${rTheme.bg} ring-1 ${rTheme.ring}`}
+                                            title={r.user.name}
+                                        >
+                                            {r.emoji}
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Comments Section - Compact */}
                 {!isLocked && (
-                    <div className="mt-4 pt-4 border-t border-black/10">
-                        <h3 className="text-sm font-sans font-bold text-stone-500 mb-2 uppercase tracking-wide opacity-50">Comments</h3>
-
-                        {/* Comments List */}
-                        <div className="space-y-3 mb-4 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                            {(!entry.comments || entry.comments.length === 0) && (
-                                <p className="text-xs text-stone-400 italic">No comments yet. Say something nice!</p>
-                            )}
-
-                            {entry.comments && entry.comments.map(comment => (
-                                <div key={comment.id} className="group flex items-start space-x-2">
-                                    <div
-                                        className={`w-6 h-6 rounded-full ring-2 flex-shrink-0 flex items-center justify-center text-[10px] font-sans font-bold mt-1
-                                        ${getUserColor(comment.user.name)}`}
-                                        title={comment.user.name}
-                                    >
-                                        {comment.user.name.charAt(0)}
-                                    </div>
-                                    <div className="flex-1 bg-white/50 rounded-lg p-2 tex-sm relative">
-                                        <div className="flex justify-between items-baseline mb-1">
-                                            <span className="font-bold text-xs text-stone-600">{comment.user.name}</span>
-                                            <span className="text-[10px] text-stone-400">
-                                                {new Date(comment.createdAt).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                        <p className="text-stone-700 text-sm whitespace-pre-wrap leading-tight">{comment.content}</p>
-
-                                        {/* Delete Comment Button (Only Owner) */}
+                    <div className="mt-3 pt-3 border-t border-black/10">
+                        {/* Comments List - Use color instead of text for user */}
+                        <div className="space-y-2 mb-3 max-h-32 overflow-y-auto">
+                            {entry.comments && entry.comments.map(comment => {
+                                const cTheme = getUserTheme(comment.user.name);
+                                return (
+                                    <div key={comment.id} className={`group relative rounded-lg px-2 py-1.5 text-sm ${cTheme.commentBg}`}>
+                                        <p className="text-stone-700 whitespace-pre-wrap leading-snug">{comment.content}</p>
                                         {comment.user.name === currentUser && (
                                             <button
                                                 onClick={() => onDeleteComment(comment.id)}
-                                                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-opacity"
-                                                title="Delete comment"
+                                                className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-opacity text-xs"
                                             >
                                                 ✕
                                             </button>
                                         )}
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         {/* Comment Input */}
@@ -295,13 +246,13 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
                                 value={commentText}
                                 onChange={(e) => setCommentText(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSendComment()}
-                                placeholder="Add a comment..."
-                                className="flex-1 bg-white/80 border border-stone-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-300 placeholder-stone-400"
+                                placeholder="..."
+                                className="flex-1 bg-white/80 border border-stone-200 rounded-full px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-stone-300 placeholder-stone-300"
                             />
                             <button
                                 onClick={handleSendComment}
                                 disabled={!commentText.trim()}
-                                className="w-10 h-10 rounded-full bg-stone-800 text-white flex items-center justify-center hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                className="w-8 h-8 rounded-full bg-stone-700 text-white flex items-center justify-center text-sm hover:bg-stone-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
                                 ➤
                             </button>
@@ -309,28 +260,28 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
                     </div>
                 )}
 
-                {/* Action Buttons - Only show if owner */}
+                {/* Action Buttons - Smaller, only for owner */}
                 {!isLocked && isOwner && (
-                    <div className="mt-6 flex space-x-3">
+                    <div className="mt-4 flex space-x-2">
                         <button
                             onClick={onEdit}
-                            className="flex-1 py-3 rounded-full border-2 border-stone-300 text-stone-600 hover:bg-stone-100 transition-all font-sans text-sm font-medium hover:-translate-y-1 hover:shadow-md"
+                            className="flex-1 py-2 rounded-full border border-stone-300 text-stone-500 hover:bg-stone-100 transition-all font-sans text-xs"
                         >
                             ✏️ Edit
                         </button>
                         <button
                             onClick={onDelete}
-                            className="flex-1 py-3 rounded-full border-2 border-red-200 text-red-400 hover:bg-red-50 hover:text-red-500 transition-all font-sans text-sm font-medium hover:-translate-y-1 hover:shadow-md"
+                            className="flex-1 py-2 rounded-full border border-red-200 text-red-400 hover:bg-red-50 transition-all font-sans text-xs"
                         >
                             🗑 Delete
                         </button>
                     </div>
                 )}
 
-                {/* Not owner hint */}
+                {/* Not owner hint - smaller */}
                 {!isLocked && !isOwner && (
-                    <div className="mt-4 text-center text-sm text-stone-400 font-sans">
-                        This is {entry.user.name}&apos;s note ✨
+                    <div className="mt-3 text-center text-xs text-stone-400 font-sans">
+                        {entry.user.name}&apos;s note ✨
                     </div>
                 )}
             </motion.div>

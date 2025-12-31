@@ -319,6 +319,7 @@ export default function Home() {
             imageUrl={entry.imageUrl}
             lockedUntil={entry.lockedUntil}
             reactions={entry.reactions}
+            comments={entry.comments}
             index={index}
             onClick={() => handleCardClick(entry)}
           />
