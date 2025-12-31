@@ -9,6 +9,13 @@ interface Reaction {
     user: { name: string };
 }
 
+interface Comment {
+    id: string;
+    content: string;
+    createdAt: string;
+    user: { name: string };
+}
+
 interface CardModalProps {
     entry: {
         id: string;
@@ -18,6 +25,7 @@ interface CardModalProps {
         imageUrl?: string;
         lockedUntil?: string;
         reactions: Reaction[];
+        comments: Comment[];
         user: { name: string };
     };
     currentUser: string;
@@ -25,6 +33,8 @@ interface CardModalProps {
     onEdit: () => void;
     onDelete: () => void;
     onToggleReact: (emoji: string, hasReacted: boolean) => void;
+    onAddComment: (content: string) => void;
+    onDeleteComment: (commentId: string) => void;
 }
 
 // User colors
@@ -39,8 +49,9 @@ const DEFAULT_EMOJIS = ['❤️', '🥹', '😆', '🤗', '🥺', '💪', '😮'
 // Extended emoji picker options
 const EXTENDED_EMOJIS = ['🎉', '🔥', '👏', '💯', '🙌', '😍', '🤩', '💕', '🌟', '🎊', '💖', '😢', '😭', '🤔', '👀'];
 
-export default function CardModal({ entry, currentUser, onClose, onEdit, onDelete, onToggleReact }: CardModalProps) {
+export default function CardModal({ entry, currentUser, onClose, onEdit, onDelete, onToggleReact, onAddComment, onDeleteComment }: CardModalProps) {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [commentText, setCommentText] = useState('');
 
     const isMemory = entry.type === 'MEMORY';
     const isLocked = entry.lockedUntil && new Date(entry.lockedUntil) > new Date();
@@ -60,9 +71,14 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
 
     const handleEmojiClick = (emoji: string) => {
         const hasReacted = myReaction === emoji;
-        // If clicking different emoji and already have one, this will toggle off old and add new
         onToggleReact(emoji, hasReacted);
         setShowEmojiPicker(false);
+    };
+
+    const handleSendComment = () => {
+        if (!commentText.trim()) return;
+        onAddComment(commentText);
+        setCommentText('');
     };
 
     return (
@@ -122,7 +138,7 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
                                 <img src={entry.imageUrl} alt="Memory" className="max-w-full max-h-64 object-contain" />
                             </div>
                         )}
-                        <p className="text-2xl leading-relaxed whitespace-pre-wrap mb-6">{entry.content}</p>
+                        <p className="text-2xl leading-relaxed whitespace-pre-wrap mb-4">{entry.content}</p>
                     </>
                 )}
 
@@ -212,6 +228,71 @@ export default function CardModal({ entry, currentUser, onClose, onEdit, onDelet
                         </div>
                     )}
                 </div>
+
+                {/* Comments Section */}
+                {!isLocked && (
+                    <div className="mt-4 pt-4 border-t border-black/10">
+                        <h3 className="text-sm font-sans font-bold text-stone-500 mb-2 uppercase tracking-wide opacity-50">Comments</h3>
+
+                        {/* Comments List */}
+                        <div className="space-y-3 mb-4 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                            {(!entry.comments || entry.comments.length === 0) && (
+                                <p className="text-xs text-stone-400 italic">No comments yet. Say something nice!</p>
+                            )}
+
+                            {entry.comments && entry.comments.map(comment => (
+                                <div key={comment.id} className="group flex items-start space-x-2">
+                                    <div
+                                        className={`w-6 h-6 rounded-full ring-2 flex-shrink-0 flex items-center justify-center text-[10px] font-sans font-bold mt-1
+                                        ${USER_COLORS[comment.user.name] || 'ring-gray-300 bg-gray-100'}`}
+                                        title={comment.user.name}
+                                    >
+                                        {comment.user.name.charAt(0)}
+                                    </div>
+                                    <div className="flex-1 bg-white/50 rounded-lg p-2 tex-sm relative">
+                                        <div className="flex justify-between items-baseline mb-1">
+                                            <span className="font-bold text-xs text-stone-600">{comment.user.name}</span>
+                                            <span className="text-[10px] text-stone-400">
+                                                {new Date(comment.createdAt).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <p className="text-stone-700 text-sm whitespace-pre-wrap leading-tight">{comment.content}</p>
+
+                                        {/* Delete Comment Button (Only Owner) */}
+                                        {comment.user.name === currentUser && (
+                                            <button
+                                                onClick={() => onDeleteComment(comment.id)}
+                                                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-opacity"
+                                                title="Delete comment"
+                                            >
+                                                ✕
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Comment Input */}
+                        <div className="flex space-x-2">
+                            <input
+                                type="text"
+                                value={commentText}
+                                onChange={(e) => setCommentText(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSendComment()}
+                                placeholder="Add a comment..."
+                                className="flex-1 bg-white/80 border border-stone-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-300 placeholder-stone-400"
+                            />
+                            <button
+                                onClick={handleSendComment}
+                                disabled={!commentText.trim()}
+                                className="w-10 h-10 rounded-full bg-stone-800 text-white flex items-center justify-center hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                ➤
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Action Buttons - Only show if owner */}
                 {!isLocked && isOwner && (

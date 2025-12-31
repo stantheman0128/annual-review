@@ -7,6 +7,13 @@ import CardModal from '@/components/CardModal';
 import EntryForm from '@/components/EntryForm';
 import { AnimatePresence } from 'framer-motion';
 
+interface Comment {
+  id: string;
+  content: string;
+  createdAt: string;
+  user: { name: string };
+}
+
 interface Entry {
   id: string;
   user: { id: string; name: string };
@@ -16,6 +23,7 @@ interface Entry {
   imageUrl?: string;
   lockedUntil?: string;
   reactions: any[];
+  comments: Comment[];
 }
 
 export default function Home() {
@@ -202,6 +210,68 @@ export default function Home() {
     }
   };
 
+  const handleAddComment = async (id: string, content: string) => {
+    try {
+      // Optimistic update
+      const tempId = 'temp-' + Date.now();
+      const newComment = {
+        id: tempId,
+        content,
+        createdAt: new Date().toISOString(),
+        user: { name: currentUser! }
+      };
+
+      setEntries(prev => prev.map(e => {
+        if (e.id === id) {
+          return { ...e, comments: [...(e.comments || []), newComment] };
+        }
+        return e;
+      }));
+
+      // Update expanded entry
+      if (expandedEntry && expandedEntry.id === id) {
+        setExpandedEntry(prev => prev ? {
+          ...prev,
+          comments: [...(prev.comments || []), newComment]
+        } : null);
+      }
+
+      await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entryId: id, userName: currentUser, content })
+      });
+      // Re-fetch to sync
+      fetchEntries();
+    } catch (error) {
+      console.error('Add comment failed', error);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      // Optimistic update
+      setEntries(prev => prev.map(e => {
+        if (e.id === expandedEntry?.id) {
+          return { ...e, comments: e.comments.filter(c => c.id !== commentId) };
+        }
+        return e;
+      }));
+
+      if (expandedEntry) {
+        setExpandedEntry(prev => prev ? {
+          ...prev,
+          comments: prev.comments.filter(c => c.id !== commentId)
+        } : null);
+      }
+
+      await fetch(`/api/comments?id=${commentId}&userName=${encodeURIComponent(currentUser!)}`, { method: 'DELETE' });
+      fetchEntries();
+    } catch (error) {
+      console.error('Delete comment failed', error);
+    }
+  };
+
   if (!currentUser) {
     return (
       <main className="min-h-screen bg-[#FEF9E7] overflow-hidden relative flex flex-col items-center justify-center">
@@ -265,6 +335,8 @@ export default function Home() {
             onEdit={() => handleEdit(expandedEntry.id)}
             onDelete={() => handleDelete(expandedEntry.id)}
             onToggleReact={(emoji, hasReacted) => handleToggleReact(expandedEntry.id, emoji, hasReacted)}
+            onAddComment={(content) => handleAddComment(expandedEntry.id, content)}
+            onDeleteComment={(commentId) => handleDeleteComment(commentId)}
           />
         )}
       </AnimatePresence>

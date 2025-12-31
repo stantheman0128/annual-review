@@ -17,6 +17,10 @@ export async function GET(request: Request) {
                 user: true,
                 reactions: {
                     include: { user: true }
+                },
+                comments: {
+                    include: { user: true },
+                    orderBy: { createdAt: 'asc' }
                 }
             },
             orderBy: { createdAt: 'desc' }

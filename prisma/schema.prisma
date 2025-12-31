@@ -17,6 +17,7 @@ model User {
 
   entries   Entry[]
   reactions Reaction[]
+  comments  Comment[]
 }
 
 // 回憶或願望卡片
@@ -35,6 +36,7 @@ model Entry {
   updatedAt    DateTime  @updatedAt
 
   reactions    Reaction[]
+  comments     Comment[]
 }
 
 // 表情反應
@@ -49,4 +51,16 @@ model Reaction {
   createdAt DateTime @default(now())
 
   @@unique([entryId, userId, emoji]) // 同一人對同一卡片只能按一種表情一次
+}
+
+// 留言
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  
+  entryId   String
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
 }
