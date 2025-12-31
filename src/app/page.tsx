@@ -35,6 +35,22 @@ export default function Home() {
   const [expandedEntry, setExpandedEntry] = useState<Entry | null>(null);
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
 
+  // Load pinned IDs from localStorage when user changes
+  useEffect(() => {
+    if (currentUser) {
+      const stored = localStorage.getItem(`pinned-${currentUser}`);
+      if (stored) {
+        try {
+          setPinnedIds(new Set(JSON.parse(stored)));
+        } catch {
+          setPinnedIds(new Set());
+        }
+      } else {
+        setPinnedIds(new Set());
+      }
+    }
+  }, [currentUser]);
+
   const handleTogglePin = (id: string) => {
     setPinnedIds(prev => {
       const next = new Set(prev);
@@ -42,6 +58,10 @@ export default function Home() {
         next.delete(id);
       } else {
         next.add(id);
+      }
+      // Save to localStorage
+      if (currentUser) {
+        localStorage.setItem(`pinned-${currentUser}`, JSON.stringify([...next]));
       }
       return next;
     });

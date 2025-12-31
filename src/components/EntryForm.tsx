@@ -123,7 +123,7 @@ export default function EntryForm({ user, initialData, onAdd, onCancel }: EntryF
                 </motion.button>
             </div>
 
-            <h2 className="text-2xl font-hand font-bold text-stone-700 mb-5 text-center pr-16">
+            <h2 className="text-2xl font-hand font-bold text-stone-700 mb-5 text-center">
                 {type === 'MEMORY' ? 'Review 2025' : 'Wish for 2026'}
             </h2>
 
@@ -146,13 +146,15 @@ export default function EntryForm({ user, initialData, onAdd, onCancel }: EntryF
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Content Area */}
-                <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder={type === 'MEMORY' ? "What's a core memory from this year?" : "What do you hope for next year?"}
-                    className="w-full h-36 bg-white border border-stone-200 rounded-lg p-4 text-lg text-stone-700 placeholder-stone-300 font-hand leading-relaxed focus:outline-none focus:ring-2 focus:ring-stone-300 resize-none"
-                />
+                {/* Content Area - Notebook style */}
+                <div className="relative">
+                    <textarea
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        placeholder={type === 'MEMORY' ? "What's a core memory from this year?" : "What do you hope for next year?"}
+                        className="w-full h-40 bg-[url('https://www.transparenttextures.com/patterns/lined-paper.png')] bg-white border border-[#EAE0D5] rounded-md p-4 text-xl text-stone-700 placeholder-stone-300 font-hand leading-9 focus:outline-none focus:ring-2 focus:ring-[#E6D5B8] resize-none shadow-inner"
+                    />
+                </div>
 
                 {/* Photo Preview */}
                 {imagePreview && (
