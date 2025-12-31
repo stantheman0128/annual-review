@@ -7,11 +7,14 @@ import EntryForm from '@/components/EntryForm';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface Entry {
-  _id: string;
-  user: string;
+  id: string;
+  user: { id: string; name: string };
   type: 'MEMORY' | 'WISH';
   content: string;
   year: number;
+  imageUrl?: string;
+  lockedUntil?: string;
+  reactions?: any[];
 }
 
 export default function Home() {
@@ -29,7 +32,7 @@ export default function Home() {
   const fetchEntries = async () => {
     if (!currentUser) return;
     try {
-      const res = await fetch(`/api/entries?user=${currentUser}`);
+      const res = await fetch(`/api/entries?user=${encodeURIComponent(currentUser)}`);
       const data = await res.json();
       if (data.success) {
         setEntries(data.data);
@@ -41,10 +44,20 @@ export default function Home() {
 
   const handleAddEntry = async (entryData: any) => {
     try {
+      // Convert 'user' to 'userName' for new API
+      const payload = {
+        userName: entryData.user,
+        type: entryData.type,
+        content: entryData.content,
+        year: entryData.year,
+        imageUrl: entryData.imageUrl || null,
+        lockedUntil: entryData.lockedUntil || null,
+      };
+
       const res = await fetch('/api/entries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entryData),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -56,11 +69,11 @@ export default function Home() {
         setEntries((prev) => [data.data, ...prev]);
         setShowForm(false);
       } else {
-        throw new Error(data.error || 'Failed to populate data');
+        throw new Error(data.error || 'Failed to save data');
       }
     } catch (error) {
       console.error('Failed to add entry', error);
-      throw error; // Propagate to form for handling
+      throw error;
     }
   };
 
@@ -102,7 +115,7 @@ export default function Home() {
       <div className="relative w-full h-screen overflow-hidden pointer-events-none">
         {entries.map((entry, index) => (
           <FloatingCard
-            key={entry._id}
+            key={entry.id}
             type={entry.type}
             content={entry.content}
             index={index}

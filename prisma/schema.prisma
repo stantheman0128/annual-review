@@ -1,0 +1,52 @@
+// Prisma schema for Annual Review app
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 使用者 (小瀚、巧巧)
+model User {
+  id        String   @id @default(cuid())
+  name      String   @unique // "小瀚" or "巧巧"
+  createdAt DateTime @default(now())
+
+  entries   Entry[]
+  reactions Reaction[]
+}
+
+// 回憶或願望卡片
+model Entry {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  
+  type         String    // "MEMORY" or "WISH"
+  content      String
+  year         Int       // 2025 for memory, 2026 for wish
+  imageUrl     String?   // 照片網址 (可選)
+  lockedUntil  DateTime? // 鎖定到什麼時候 (可選)
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  reactions    Reaction[]
+}
+
+// 表情反應
+model Reaction {
+  id        String   @id @default(cuid())
+  entryId   String
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  emoji     String   // "❤️", "🥹", "😆", "🫂" 等
+  createdAt DateTime @default(now())
+
+  @@unique([entryId, userId, emoji]) // 同一人對同一卡片只能按一種表情一次
+}
