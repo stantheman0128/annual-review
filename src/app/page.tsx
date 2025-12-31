@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import UserSelect from '@/components/UserSelect';
 import FloatingCard from '@/components/FloatingCard';
+import CardModal from '@/components/CardModal';
 import EntryForm from '@/components/EntryForm';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 interface Entry {
   id: string;
@@ -20,8 +21,10 @@ interface Entry {
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
+  const [expandedEntry, setExpandedEntry] = useState<Entry | null>(null);
 
   // Fetch entries when user is selected
   useEffect(() => {
@@ -40,6 +43,8 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Failed to fetch entries', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -86,43 +91,82 @@ export default function Home() {
     }
   };
 
+  const handleCardClick = (entry: Entry) => {
+    setExpandedEntry(entry);
+  };
+
   const handleEdit = (id: string) => {
     const entry = entries.find(e => e.id === id);
     if (entry) {
+      setExpandedEntry(null);
       setEditingEntry(entry);
       setShowForm(true);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this memory?')) return;
+    if (!confirm('Are you sure you want to delete this?')) return;
     try {
       await fetch(`/api/entries/${id}`, { method: 'DELETE' });
       setEntries(prev => prev.filter(e => e.id !== id));
+      setExpandedEntry(null);
     } catch (error) {
       console.error('Delete failed', error);
     }
   };
 
-  const handleReact = async (id: string, emoji: string) => {
+  const handleToggleReact = async (id: string, emoji: string, hasReacted: boolean) => {
     try {
-      // Optimistic update
-      setEntries(prev => prev.map(e => {
-        if (e.id === id) {
-          return {
-            ...e,
-            reactions: [...e.reactions, { id: 'temp-' + Date.now(), emoji, user: { name: currentUser! } }]
-          };
-        }
-        return e;
-      }));
+      if (hasReacted) {
+        // Remove reaction - optimistic update
+        setEntries(prev => prev.map(e => {
+          if (e.id === id) {
+            return {
+              ...e,
+              reactions: e.reactions.filter(r => !(r.emoji === emoji && r.user.name === currentUser))
+            };
+          }
+          return e;
+        }));
 
-      await fetch('/api/reactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entryId: id, userName: currentUser, emoji })
-      });
-      // Re-fetch to get real ID and correct count
+        // Also update expanded entry
+        if (expandedEntry && expandedEntry.id === id) {
+          setExpandedEntry(prev => prev ? {
+            ...prev,
+            reactions: prev.reactions.filter(r => !(r.emoji === emoji && r.user.name === currentUser))
+          } : null);
+        }
+
+        await fetch(`/api/reactions?entryId=${id}&userName=${encodeURIComponent(currentUser!)}&emoji=${encodeURIComponent(emoji)}`, {
+          method: 'DELETE'
+        });
+      } else {
+        // Add reaction - optimistic update
+        setEntries(prev => prev.map(e => {
+          if (e.id === id) {
+            return {
+              ...e,
+              reactions: [...e.reactions, { id: 'temp-' + Date.now(), emoji, user: { name: currentUser! } }]
+            };
+          }
+          return e;
+        }));
+
+        // Also update expanded entry
+        if (expandedEntry && expandedEntry.id === id) {
+          setExpandedEntry(prev => prev ? {
+            ...prev,
+            reactions: [...prev.reactions, { id: 'temp-' + Date.now(), emoji, user: { name: currentUser! } }]
+          } : null);
+        }
+
+        await fetch('/api/reactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entryId: id, userName: currentUser, emoji })
+        });
+      }
+      // Re-fetch to sync
       fetchEntries();
     } catch (error) {
       console.error('React failed', error);
@@ -152,7 +196,7 @@ export default function Home() {
             ← Back
           </button>
           <h1 className="text-3xl font-hand font-bold text-stone-700">
-            {currentUser}&apos;s 2025 & 2026
+            {currentUser}&apos;s 2025 &amp; 2026
           </h1>
         </div>
         <button
@@ -171,23 +215,35 @@ export default function Home() {
             id={entry.id}
             type={entry.type}
             content={entry.content}
+            author={entry.user.name}
             year={entry.year}
             imageUrl={entry.imageUrl}
             lockedUntil={entry.lockedUntil}
             reactions={entry.reactions}
-            currentUser={currentUser}
             index={index}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onReact={handleReact}
+            onClick={() => handleCardClick(entry)}
           />
         ))}
       </div>
 
+      {/* Card Detail Modal - Rendered at page level! */}
+      <AnimatePresence>
+        {expandedEntry && (
+          <CardModal
+            entry={expandedEntry}
+            currentUser={currentUser}
+            onClose={() => setExpandedEntry(null)}
+            onEdit={() => handleEdit(expandedEntry.id)}
+            onDelete={() => handleDelete(expandedEntry.id)}
+            onToggleReact={(emoji, hasReacted) => handleToggleReact(expandedEntry.id, emoji, hasReacted)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Entry Form Modal */}
       <AnimatePresence>
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <EntryForm
               user={currentUser}
               initialData={editingEntry}
@@ -198,8 +254,8 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Empty State Hint */}
-      {entries.length === 0 && !showForm && (
+      {/* Empty State Hint - only show after loading complete */}
+      {!isLoading && entries.length === 0 && !showForm && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <p className="text-stone-300 text-2xl font-hand rotate-[-5deg]">It&apos;s quiet here... Add a memory or wish.</p>
         </div>
