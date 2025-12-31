@@ -31,16 +31,14 @@ interface FloatingCardProps {
 }
 
 // User theme colors
-const USER_THEMES: Record<string, { bg: string; border: string }> = {
-    '小瀚': { bg: 'bg-blue-50', border: 'border-blue-400' },
-    '巧巧': { bg: 'bg-pink-50', border: 'border-pink-400' },
+const USER_THEMES: Record<string, { bg: string; border: string; avatar: string; tag: string }> = {
+    '小瀚': { bg: 'bg-blue-50', border: 'border-blue-400', avatar: 'bg-blue-400', tag: 'bg-blue-100 text-blue-600' },
+    '巧巧': { bg: 'bg-pink-50', border: 'border-pink-400', avatar: 'bg-pink-400', tag: 'bg-pink-100 text-pink-600' },
 };
 
 const FALLBACK_THEMES = [
-    { bg: 'bg-purple-50', border: 'border-purple-400' },
-    { bg: 'bg-green-50', border: 'border-green-400' },
-    { bg: 'bg-orange-50', border: 'border-orange-400' },
-    { bg: 'bg-cyan-50', border: 'border-cyan-400' },
+    { bg: 'bg-purple-50', border: 'border-purple-400', avatar: 'bg-purple-400', tag: 'bg-purple-100 text-purple-600' },
+    { bg: 'bg-green-50', border: 'border-green-400', avatar: 'bg-green-400', tag: 'bg-green-100 text-green-600' },
 ];
 
 const getUserTheme = (userName: string) => {
@@ -63,16 +61,16 @@ export default function FloatingCard({
     comments = [],
     onClick,
 }: FloatingCardProps) {
-    // Use index to create more spread-out positions (sector-based distribution)
-    const sectorCount = 5; // Divide screen into 5 horizontal sectors
+    // Improved distribution: divide into more sectors with staggered vertical start
+    const sectorCount = 6;
     const sector = index % sectorCount;
-    const baseX = (sector * 18) + 5; // 5%, 23%, 41%, 59%, 77%
-    const randomOffset = useMemo(() => Math.random() * 12 - 6, []); // ±6% variance
-    const randomX = baseX + randomOffset;
+    const baseX = (sector * 14) + 5; // 5%, 19%, 33%, 47%, 61%, 75%
+    const randomOffset = useMemo(() => Math.random() * 8 - 4, []); // ±4% variance
+    const randomX = Math.max(5, Math.min(85, baseX + randomOffset));
 
-    const duration = useMemo(() => Math.random() * 20 + 35, []); // 35-55s even slower
-    const delay = useMemo(() => (index % 3) * 0.3 + Math.random() * 0.5, []); // Staggered start
-    const rotate = useMemo(() => Math.random() * 6 - 3, []);
+    const duration = useMemo(() => Math.random() * 20 + 40, []); // 40-60s very slow
+    const delay = useMemo(() => (index % 4) * 0.5 + Math.random() * 0.5, []); // More staggered
+    const rotate = useMemo(() => Math.random() * 4 - 2, []); // Less rotation
 
     const isMemory = type === 'MEMORY';
     const isLocked = lockedUntil && new Date(lockedUntil) > new Date();
@@ -86,13 +84,13 @@ export default function FloatingCard({
     return (
         <motion.div
             initial={{
-                y: isMemory ? '-20vh' : '120vh',
+                y: isMemory ? '-15vh' : '115vh',
                 x: `${randomX}vw`,
                 opacity: 0,
                 rotate: rotate
             }}
             animate={{
-                y: isMemory ? '120vh' : '-20vh',
+                y: isMemory ? '115vh' : '-15vh',
                 opacity: [0, 1, 1, 0],
             }}
             transition={{
@@ -102,23 +100,25 @@ export default function FloatingCard({
                 delay: delay
             }}
             onClick={onClick}
-            className={`absolute w-52 p-2.5 rounded-sm shadow-md pointer-events-auto cursor-pointer font-hand tracking-wider
-                ${cardBg} text-stone-700 border-t-4 ${cardBorder}
+            className={`absolute w-48 p-2.5 rounded-lg shadow-md pointer-events-auto cursor-pointer font-hand tracking-wider
+                ${cardBg} text-stone-700 border-l-4 ${cardBorder}
                 transition-transform duration-300 hover:scale-105 hover:shadow-lg`}
         >
-            {/* Header: Year + Author name (only show if other user's card) */}
+            {/* Header: Author tag (prominent for other user) + Year */}
             <div className="flex items-center justify-between mb-1.5">
-                <div className="text-[9px] font-sans font-bold uppercase tracking-widest opacity-40">
-                    {year} {isMemory ? 'Memory' : 'Wish'}
-                </div>
-                {isOtherUser && (
-                    <div className="text-[10px] font-sans text-stone-500">
+                {isOtherUser ? (
+                    <span className={`text-[10px] font-sans font-bold px-1.5 py-0.5 rounded ${theme.tag}`}>
                         {author}
-                    </div>
+                    </span>
+                ) : (
+                    <span className="text-[9px] font-sans uppercase tracking-widest text-stone-400">
+                        {isMemory ? 'Memory' : 'Wish'}
+                    </span>
                 )}
+                <span className="text-[9px] font-sans text-stone-400">{year}</span>
             </div>
 
-            {/* Content Preview */}
+            {/* Content Preview - preserve line breaks */}
             {isLocked ? (
                 <div className="flex items-center justify-center py-3 opacity-60">
                     <span className="text-xl">🔒</span>
@@ -126,30 +126,34 @@ export default function FloatingCard({
             ) : (
                 <>
                     {imageUrl && (
-                        <div className="mb-1.5 w-full h-16 overflow-hidden rounded opacity-80">
+                        <div className="mb-1.5 w-full h-14 overflow-hidden rounded opacity-80">
                             <img src={imageUrl} alt="" className="w-full h-full object-cover" />
                         </div>
                     )}
-                    <p className="text-sm leading-relaxed line-clamp-3">{content}</p>
+                    <p className="text-sm leading-relaxed line-clamp-3 whitespace-pre-wrap">{content}</p>
                 </>
             )}
 
-            {/* Reactions - compact emoji badges */}
+            {/* Reactions - show who selected which emoji */}
             {reactions.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-0.5">
-                    {reactions.slice(0, 3).map(r => {
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                    {reactions.slice(0, 4).map(r => {
                         const rTheme = getUserTheme(r.user.name);
                         return (
                             <span
                                 key={r.id}
-                                className={`text-[11px] px-1 rounded ${rTheme.bg}`}
+                                className={`inline-flex items-center text-[10px] px-1 py-0.5 rounded ${rTheme.bg}`}
+                                title={r.user.name}
                             >
+                                <span className={`w-3 h-3 rounded-full ${rTheme.avatar} text-white text-[7px] flex items-center justify-center mr-0.5`}>
+                                    {r.user.name.charAt(0)}
+                                </span>
                                 {r.emoji}
                             </span>
                         );
                     })}
-                    {reactions.length > 3 && (
-                        <span className="text-[10px] text-stone-400">+{reactions.length - 3}</span>
+                    {reactions.length > 4 && (
+                        <span className="text-[9px] text-stone-400">+{reactions.length - 4}</span>
                     )}
                 </div>
             )}

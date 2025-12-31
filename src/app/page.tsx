@@ -71,7 +71,6 @@ export default function Home() {
 
   const handleSubmitEntry = async (entryData: any) => {
     try {
-      // payload preparation
       const payload = {
         userName: entryData.user,
         type: entryData.type,
@@ -89,6 +88,26 @@ export default function Home() {
         method = 'PUT';
       }
 
+      // Optimistic update: add to list immediately for new entries
+      if (!editingEntry) {
+        const optimisticEntry: Entry = {
+          id: `temp-${Date.now()}`,
+          user: { id: 'temp', name: entryData.user },
+          type: entryData.type,
+          content: entryData.content,
+          year: entryData.year,
+          imageUrl: entryData.imageUrl || undefined,
+          lockedUntil: entryData.lockedUntil || undefined,
+          reactions: [],
+          comments: [],
+        };
+        setEntries(prev => [optimisticEntry, ...prev]);
+      }
+
+      // Close form immediately
+      setShowForm(false);
+      setEditingEntry(null);
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -99,15 +118,15 @@ export default function Home() {
 
       const data = await res.json();
       if (data.success) {
-        // Refresh list
+        // Sync with server to get real ID and data
         await fetchEntries();
-        setShowForm(false);
-        setEditingEntry(null);
       } else {
         throw new Error(data.error || 'Failed to save data');
       }
     } catch (error) {
       console.error('Failed to save entry', error);
+      // Revert optimistic update on error
+      await fetchEntries();
       throw error;
     }
   };

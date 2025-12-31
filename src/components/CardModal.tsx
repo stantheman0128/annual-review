@@ -56,7 +56,6 @@ const getUserTheme = (userName: string) => {
     return FALLBACK_THEMES[hash % FALLBACK_THEMES.length];
 };
 
-// All emojis for hover picker
 const ALL_EMOJIS = ['❤️', '🥹', '😆', '🤗', '🥺', '💪', '😮', '🎉', '🔥', '👏', '💯', '🙌', '😍', '💕', '🤔'];
 
 export default function CardModal({
@@ -89,11 +88,13 @@ export default function CardModal({
     const modalBg = isMemory ? authorTheme.bg : 'bg-[#FFF9EA]';
     const borderColor = authorTheme.border;
 
-    // Format timestamp
     const formatTime = (dateStr: string) => {
         const date = new Date(dateStr);
         return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
     };
+
+    // Instagram-style icon button classes
+    const iconBtnClass = "w-9 h-9 flex items-center justify-center rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-200/60 transition-all duration-200 cursor-pointer";
 
     return (
         <motion.div
@@ -111,37 +112,95 @@ export default function CardModal({
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}
-                className={`relative w-full max-w-md p-5 rounded-lg shadow-2xl font-hand tracking-wider ${modalBg} text-stone-700 border-t-8 ${borderColor}`}
+                className={`relative w-full max-w-md p-5 rounded-xl shadow-2xl font-hand tracking-wider ${modalBg} text-stone-700 border-t-4 ${borderColor}`}
             >
-                {/* Top buttons: Pin + Close */}
-                <div className="absolute top-1 right-1 flex space-x-1">
+                {/* Top buttons: Pin + Close - larger hitbox */}
+                <div className="absolute top-2 right-2 flex items-center space-x-1 z-10">
                     {onTogglePin && (
-                        <button
-                            onClick={onTogglePin}
-                            className={`w-10 h-10 flex items-center justify-center rounded-full text-xl transition-all
-                                ${isPinned
-                                    ? 'text-amber-500 bg-amber-100'
-                                    : 'text-stone-400 hover:text-amber-500 hover:bg-stone-200/50'
-                                }`}
-                            title={isPinned ? 'Unpin' : 'Pin to sidebar'}
+                        <motion.button
+                            onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
+                            whileTap={{ scale: 0.9 }}
+                            className={iconBtnClass}
+                            title={isPinned ? 'Unpin' : 'Pin'}
                         >
-                            📌
-                        </button>
+                            {/* SVG Pin icon - outline or filled */}
+                            <svg
+                                width="18" height="18" viewBox="0 0 24 24"
+                                fill={isPinned ? "currentColor" : "none"}
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                className={`transition-all duration-200 ${isPinned ? 'text-stone-600' : ''}`}
+                            >
+                                <path d="M12 2L12 12M12 12L8 8M12 12L16 8M5 21L12 14L19 21" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                        </motion.button>
                     )}
-                    <button
-                        onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center text-stone-400 hover:text-stone-600 hover:bg-stone-200/50 rounded-full text-xl transition-all"
+                    <motion.button
+                        onClick={(e) => { e.stopPropagation(); onClose(); }}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        className={iconBtnClass}
                     >
-                        ✕
-                    </button>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                        </svg>
+                    </motion.button>
                 </div>
 
-                {/* Header */}
-                <div className="text-xs font-sans font-bold uppercase tracking-widest opacity-50 mb-3">
-                    {entry.year} {isMemory ? 'Memory' : 'Wish'}
+                {/* Header with React button on the right of first line */}
+                <div className="flex items-center justify-between mb-3 pr-20">
+                    <div className="text-xs font-sans font-bold uppercase tracking-widest opacity-50">
+                        {entry.year} {isMemory ? 'Memory' : 'Wish'}
+                    </div>
+
+                    {/* React button - Instagram style */}
+                    {!isLocked && (
+                        <div className="relative">
+                            <motion.button
+                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="flex items-center space-x-1 px-2.5 py-1 rounded-full border border-stone-200 text-xs text-stone-500 hover:bg-stone-100 transition-all"
+                            >
+                                <span>{myReaction || '♡'}</span>
+                                <span>React</span>
+                            </motion.button>
+
+                            {/* Emoji picker dropdown */}
+                            <AnimatePresence>
+                                {showEmojiPicker && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.9, y: 5 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, y: 5 }}
+                                        className="absolute top-full mt-1 right-0 bg-white rounded-lg shadow-lg p-2 border border-stone-200 z-20"
+                                    >
+                                        <div className="flex flex-wrap gap-1 max-w-[220px]">
+                                            {ALL_EMOJIS.map(emoji => {
+                                                const isSelected = myReaction === emoji;
+                                                return (
+                                                    <button
+                                                        key={emoji}
+                                                        onClick={() => handleEmojiClick(emoji)}
+                                                        className={`text-lg p-1.5 rounded-full transition-all
+                                                            ${isSelected
+                                                                ? `scale-110 ring-2 ${currentUserTheme.ring} ${currentUserTheme.bg}`
+                                                                : 'hover:scale-110 hover:bg-stone-100'
+                                                            }`}
+                                                    >
+                                                        {emoji}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
                 </div>
 
-                {/* Content */}
+                {/* Content - preserve line breaks */}
                 {isLocked ? (
                     <div className="flex flex-col items-center justify-center py-10 opacity-60">
                         <span className="text-4xl mb-2">🔒</span>
@@ -158,89 +217,42 @@ export default function CardModal({
                     </>
                 )}
 
-                {/* Emoji Reaction - Hover style trigger */}
-                {!isLocked && (
-                    <div className="relative pt-3 border-t border-black/10">
-                        {/* Reaction trigger button */}
-                        <div className="flex items-center space-x-2">
-                            <button
-                                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                className={`flex items-center space-x-1 px-3 py-1.5 rounded-full border border-stone-200 text-sm transition-all
-                                    ${showEmojiPicker ? 'bg-stone-100' : 'hover:bg-stone-50'}`}
-                            >
-                                <span>{myReaction || '😊'}</span>
-                                <span className="text-stone-400 text-xs">React</span>
-                            </button>
-
-                            {/* Show existing reactions as colored badges */}
-                            {entry.reactions.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                    {entry.reactions.map(r => {
-                                        const rTheme = getUserTheme(r.user.name);
-                                        return (
-                                            <span
-                                                key={r.id}
-                                                className={`text-sm px-1.5 py-0.5 rounded-full ${rTheme.bg} ring-1 ${rTheme.ring}`}
-                                                title={r.user.name}
-                                            >
-                                                {r.emoji}
-                                            </span>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Emoji picker dropdown */}
-                        <AnimatePresence>
-                            {showEmojiPicker && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    className="absolute bottom-full mb-2 left-0 bg-white rounded-lg shadow-lg p-2 border border-stone-200 z-10"
+                {/* Reactions display - show who reacted */}
+                {!isLocked && entry.reactions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-3 pt-3 border-t border-black/10">
+                        {entry.reactions.map(r => {
+                            const rTheme = getUserTheme(r.user.name);
+                            return (
+                                <span
+                                    key={r.id}
+                                    className={`inline-flex items-center text-sm px-2 py-0.5 rounded-full ${rTheme.bg} ring-1 ${rTheme.ring}`}
+                                    title={r.user.name}
                                 >
-                                    <div className="flex flex-wrap gap-1 max-w-[280px]">
-                                        {ALL_EMOJIS.map(emoji => {
-                                            const isSelected = myReaction === emoji;
-                                            return (
-                                                <button
-                                                    key={emoji}
-                                                    onClick={() => handleEmojiClick(emoji)}
-                                                    className={`text-lg p-1.5 rounded-full transition-all
-                                                        ${isSelected
-                                                            ? `scale-110 ring-2 ${currentUserTheme.ring} ${currentUserTheme.bg}`
-                                                            : 'hover:scale-110 hover:bg-stone-100'
-                                                        }`}
-                                                >
-                                                    {emoji}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                                    <span className={`w-4 h-4 rounded-full ${rTheme.avatar} text-white text-[8px] flex items-center justify-center mr-1`}>
+                                        {r.user.name.charAt(0)}
+                                    </span>
+                                    {r.emoji}
+                                </span>
+                            );
+                        })}
                     </div>
                 )}
 
-                {/* Comments Section - with avatar and timestamp */}
+                {/* Comments Section */}
                 {!isLocked && (
-                    <div className="mt-3 pt-3 border-t border-black/10">
+                    <div className="pt-3 border-t border-black/10">
                         <div className="space-y-2 mb-3 max-h-36 overflow-y-auto">
                             {entry.comments && entry.comments.map(comment => {
                                 const cTheme = getUserTheme(comment.user.name);
                                 return (
                                     <div key={comment.id} className="group flex items-start space-x-2">
-                                        {/* Avatar */}
                                         <div
                                             className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[10px] font-bold ${cTheme.avatar}`}
                                             title={comment.user.name}
                                         >
                                             {comment.user.name.charAt(0)}
                                         </div>
-                                        {/* Comment bubble */}
-                                        <div className={`flex-1 rounded-lg px-2 py-1.5 text-sm ${cTheme.commentBg} relative`}>
+                                        <div className={`flex-1 rounded-lg px-2.5 py-1.5 text-sm ${cTheme.commentBg} relative`}>
                                             <div className="flex justify-between items-baseline mb-0.5">
                                                 <span className="text-[10px] font-bold text-stone-600">{comment.user.name}</span>
                                                 <span className="text-[9px] text-stone-400">{formatTime(comment.createdAt)}</span>
@@ -249,9 +261,11 @@ export default function CardModal({
                                             {comment.user.name === currentUser && (
                                                 <button
                                                     onClick={() => onDeleteComment(comment.id)}
-                                                    className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 transition-opacity text-xs"
+                                                    className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 text-stone-400 hover:text-red-500 transition-all rounded-full hover:bg-red-50"
                                                 >
-                                                    ✕
+                                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                                                    </svg>
                                                 </button>
                                             )}
                                         </div>
@@ -267,42 +281,48 @@ export default function CardModal({
                                 value={commentText}
                                 onChange={(e) => setCommentText(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSendComment()}
-                                placeholder="Say something..."
+                                placeholder="Add a comment..."
                                 className="flex-1 bg-white/80 border border-stone-200 rounded-full px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-stone-300 placeholder-stone-300"
                             />
-                            <button
+                            <motion.button
                                 onClick={handleSendComment}
                                 disabled={!commentText.trim()}
-                                className="w-8 h-8 rounded-full bg-stone-700 text-white flex items-center justify-center text-sm hover:bg-stone-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="px-4 py-1.5 rounded-full bg-stone-700 text-white text-sm hover:bg-stone-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
-                                ➤
-                            </button>
+                                Send
+                            </motion.button>
                         </div>
                     </div>
                 )}
 
-                {/* Action Buttons - only for owner */}
+                {/* Action Buttons - Instagram style, gray, no emoji */}
                 {!isLocked && isOwner && (
                     <div className="mt-4 flex space-x-2">
-                        <button
+                        <motion.button
                             onClick={onEdit}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                             className="flex-1 py-2 rounded-full border border-stone-300 text-stone-500 hover:bg-stone-100 transition-all font-sans text-xs"
                         >
-                            ✏️ Edit
-                        </button>
-                        <button
+                            Edit
+                        </motion.button>
+                        <motion.button
                             onClick={onDelete}
-                            className="flex-1 py-2 rounded-full border border-red-200 text-red-400 hover:bg-red-50 transition-all font-sans text-xs"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="flex-1 py-2 rounded-full border border-stone-300 text-stone-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all font-sans text-xs"
                         >
-                            🗑 Delete
-                        </button>
+                            Delete
+                        </motion.button>
                     </div>
                 )}
 
                 {/* Not owner hint */}
                 {!isLocked && !isOwner && (
                     <div className="mt-3 text-center text-xs text-stone-400 font-sans">
-                        {entry.user.name}&apos;s note ✨
+                        {entry.user.name}&apos;s note
                     </div>
                 )}
             </motion.div>
