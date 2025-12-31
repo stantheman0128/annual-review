@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-hand: var(--font-zhi-mang-xing); /* New handwritten font */
+}
+
+:root {
+  /* Warm/Cream Palette */
+  --background: #FEF9E7; /* Light cream */
+  --foreground: #4A4A4A; /* Soft charcoal */
+  --card-bg: rgba(255, 255, 255, 0.6);
+  --accent-pink: #F4D0D0; /* Muted pink */
+  --accent-orange: #F9E0C8; /* Soft orange/peach */
+  --accent-blue: #D0E1F4; /* Soft blue */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Keeping warm tones even in dark mode, just deeper */
+    --background: #2C2A29; /* Dark warm brown/grey */
+    --foreground: #EAE0D5; /* Oat color */
+    --card-bg: rgba(255, 255, 255, 0.1);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-hand), var(--font-sans), cursive, sans-serif; /* Prioritize handwritten */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom scrollbar for handwritten feel if needed */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}

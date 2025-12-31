@@ -1,0 +1,20 @@
+{
+  "entries": [
+    {
+      "_id": "5ij5l2fcq",
+      "user": "小瀚",
+      "type": "MEMORY",
+      "content": "我喜歡巧巧!",
+      "year": 2025,
+      "createdAt": "2025-12-31T04:46:40.235Z"
+    },
+    {
+      "_id": "79v9079qa",
+      "user": "小瀚",
+      "type": "WISH",
+      "content": "希望今年能夠賺大錢!",
+      "year": 2026,
+      "createdAt": "2025-12-31T04:47:11.287Z"
+    }
+  ]
+}
